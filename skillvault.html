@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillVault — Claude Skills Registry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080B14;
+    --surface: #0F1420;
+    --surface2: #161C2E;
+    --border: #1E2A42;
+    --border2: #253250;
+    --primary: #5B7FFF;
+    --primary-glow: rgba(91,127,255,0.15);
+    --primary-dark: #3A5CE8;
+    --accent: #FF6B6B;
+    --accent2: #FFB347;
+    --green: #3ECFAC;
+    --purple: #A78BFA;
+    --text: #E8EEF8;
+    --text2: #8A9DC0;
+    --text3: #4A5A7A;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Syne', sans-serif;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── NOISE OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* ─── GRID BG ─── */
+  .grid-bg {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(91,127,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(91,127,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  /* ─── GLOW ORBS ─── */
+  .orb {
+    position: fixed; border-radius: 50%; filter: blur(80px);
+    pointer-events: none; z-index: 0;
+  }
+  .orb-1 { width: 600px; height: 600px; background: rgba(91,127,255,0.08); top: -200px; left: -100px; }
+  .orb-2 { width: 500px; height: 500px; background: rgba(167,139,250,0.06); bottom: -150px; right: -100px; }
+
+  /* ─── NAV ─── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 40px; height: 68px;
+    background: rgba(8,11,20,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    display: flex; align-items: center; gap: 12px;
+    text-decoration: none;
+  }
+  .logo-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--purple));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text {
+    font-family: var(--display);
+    font-size: 20px; font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+  .logo-text span { color: var(--primary); }
+
+  .nav-links {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-link {
+    padding: 8px 16px; border-radius: 8px;
+    color: var(--text2); font-size: 14px; font-weight: 500;
+    text-decoration: none; transition: all 0.2s;
+    cursor: pointer; border: none; background: none; font-family: var(--sans);
+  }
+  .nav-link:hover { color: var(--text); background: var(--surface2); }
+  .nav-cta {
+    padding: 9px 20px; border-radius: 9px;
+    background: var(--primary); color: #fff;
+    font-size: 14px; font-weight: 600;
+    border: none; cursor: pointer; font-family: var(--sans);
+    transition: all 0.2s; text-decoration: none;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .nav-cta:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+  /* ─── HERO ─── */
+  .hero {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: 100px 40px 80px;
+    max-width: 900px; margin: 0 auto;
+  }
+
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 16px; border-radius: 100px;
+    background: rgba(91,127,255,0.1);
+    border: 1px solid rgba(91,127,255,0.2);
+    color: var(--primary); font-size: 13px; font-weight: 500;
+    margin-bottom: 32px; font-family: var(--mono);
+  }
+  .badge-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--primary);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .hero h1 {
+    font-family: var(--display);
+    font-size: clamp(42px, 6vw, 72px);
+    font-weight: 800; line-height: 1.05;
+    letter-spacing: -1.5px;
+    margin-bottom: 24px;
+  }
+  .hero h1 .line2 {
+    background: linear-gradient(135deg, var(--primary), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .hero p {
+    font-size: 18px; color: var(--text2);
+    line-height: 1.7; max-width: 600px; margin: 0 auto 48px;
+  }
+
+  .hero-actions {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px; border-radius: 12px;
+    background: var(--primary); color: #fff;
+    font-family: var(--sans); font-size: 15px; font-weight: 600;
+    border: none; cursor: pointer; transition: all 0.2s;
+    text-decoration: none;
+  }
+  .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 12px 30px rgba(91,127,255,0.3); }
+
+  .btn-ghost {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px; border-radius: 12px;
+    background: transparent; color: var(--text2);
+    font-family: var(--sans); font-size: 15px; font-weight: 500;
+    border: 1px solid var(--border2); cursor: pointer; transition: all 0.2s;
+    text-decoration: none;
+  }
+  .btn-ghost:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-2px); }
+
+  /* ─── STATS BAR ─── */
+  .stats-bar {
+    position: relative; z-index: 1;
+    display: flex; justify-content: center; gap: 0;
+    max-width: 700px; margin: 0 auto 80px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+  }
+  .stat {
+    flex: 1; padding: 24px 20px; text-align: center;
+    border-right: 1px solid var(--border);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-value {
+    font-family: var(--display);
+    font-size: 28px; font-weight: 800; color: var(--text);
+    margin-bottom: 4px;
+  }
+  .stat-value span { color: var(--primary); }
+  .stat-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ─── MAIN LAYOUT ─── */
+  .main {
+    position: relative; z-index: 1;
+    max-width: 1200px; margin: 0 auto;
+    padding: 0 40px 100px;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar { position: sticky; top: 100px; }
+
+  .sidebar-section { margin-bottom: 32px; }
+  .sidebar-title {
+    font-size: 11px; font-weight: 600;
+    color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 10px; padding: 0 4px;
+  }
+
+  .filter-btn {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 9px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text2); font-family: var(--sans); font-size: 14px;
+    transition: all 0.15s; text-align: left; margin-bottom: 2px;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--surface2); color: var(--text);
+  }
+  .filter-btn.active { color: var(--primary); }
+  .filter-icon { font-size: 16px; width: 20px; text-align: center; }
+  .filter-count {
+    margin-left: auto;
+    background: var(--surface2); color: var(--text3);
+    font-size: 11px; font-family: var(--mono);
+    padding: 2px 7px; border-radius: 100px;
+  }
+  .filter-btn.active .filter-count { background: var(--primary-glow); color: var(--primary); }
+
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px;
+    margin-bottom: 20px; transition: border-color 0.2s;
+  }
+  .search-box:focus-within { border-color: var(--primary); }
+  .search-box svg { color: var(--text3); flex-shrink: 0; }
+  .search-box input {
+    background: none; border: none; outline: none;
+    color: var(--text); font-family: var(--sans); font-size: 14px;
+    width: 100%;
+  }
+  .search-box input::placeholder { color: var(--text3); }
+
+  /* ─── SKILL GRID ─── */
+  .skills-area {}
+  .skills-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .skills-heading {
+    font-family: var(--display); font-size: 22px; font-weight: 700;
+  }
+  .sort-select {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text2); font-family: var(--sans); font-size: 13px;
+    padding: 8px 12px; border-radius: 8px; cursor: pointer; outline: none;
+  }
+
+  .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+
+  /* ─── SKILL CARD ─── */
+  .skill-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .skill-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .skill-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px var(--border2);
+  }
+  .skill-card:hover::before { opacity: 1; }
+
+  .card-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .card-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+  }
+  .card-badges {
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;
+  }
+  .badge {
+    padding: 3px 10px; border-radius: 100px;
+    font-size: 11px; font-weight: 500; font-family: var(--mono);
+  }
+  .badge-new { background: rgba(62,207,172,0.12); color: var(--green); border: 1px solid rgba(62,207,172,0.2); }
+  .badge-popular { background: rgba(255,107,107,0.12); color: var(--accent); border: 1px solid rgba(255,107,107,0.2); }
+  .badge-updated { background: rgba(255,179,71,0.12); color: var(--accent2); border: 1px solid rgba(255,179,71,0.2); }
+
+  .card-name {
+    font-family: var(--display); font-size: 17px; font-weight: 700;
+    margin-bottom: 8px; color: var(--text);
+  }
+  .card-desc {
+    font-size: 13.5px; color: var(--text2); line-height: 1.6;
+    margin-bottom: 16px;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .card-tags {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .tag {
+    padding: 3px 10px; border-radius: 6px;
+    background: var(--surface2); color: var(--text3);
+    font-size: 11px; font-family: var(--mono);
+    border: 1px solid var(--border);
+  }
+
+  .card-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 16px; border-top: 1px solid var(--border);
+  }
+  .card-stats {
+    display: flex; gap: 14px; font-size: 12px; color: var(--text3); font-family: var(--mono);
+  }
+  .card-stat { display: flex; align-items: center; gap: 4px; }
+
+  .card-actions { display: flex; gap: 8px; }
+
+  .btn-install {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px;
+    background: var(--primary); color: #fff;
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
+    border: none; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-install:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+  .btn-download {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-radius: 8px;
+    background: var(--surface2); color: var(--text2);
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    border: 1px solid var(--border); cursor: pointer; transition: all 0.2s;
+    text-decoration: none;
+  }
+  .btn-download:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 20px; width: 100%; max-width: 580px;
+    max-height: 90vh; overflow-y: auto;
+    position: relative;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .modal-header {
+    padding: 28px 28px 0;
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .modal-icon { width: 64px; height: 64px; border-radius: 16px; font-size: 32px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  .modal-close {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text2); cursor: pointer; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.15s;
+  }
+  .modal-close:hover { background: var(--border); color: var(--text); }
+
+  .modal-body { padding: 20px 28px 28px; }
+  .modal-name { font-family: var(--display); font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+  .modal-desc { color: var(--text2); line-height: 1.7; margin-bottom: 24px; font-size: 15px; }
+
+  .modal-section-title {
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;
+  }
+
+  .install-steps {
+    background: var(--surface2); border-radius: 12px;
+    padding: 20px; margin-bottom: 24px;
+    border: 1px solid var(--border);
+  }
+  .install-step {
+    display: flex; gap: 12px; margin-bottom: 14px;
+  }
+  .install-step:last-child { margin-bottom: 0; }
+  .step-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-text { font-size: 14px; color: var(--text2); line-height: 1.5; }
+  .step-text strong { color: var(--text); }
+
+  .deep-link-box {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    font-family: var(--mono); font-size: 13px; color: var(--primary);
+    word-break: break-all; margin-bottom: 24px;
+  }
+
+  .modal-actions { display: flex; gap: 12px; }
+  .modal-btn-primary {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px; border-radius: 12px;
+    background: var(--primary); color: #fff;
+    font-family: var(--sans); font-size: 15px; font-weight: 600;
+    border: none; cursor: pointer; transition: all 0.2s;
+    text-decoration: none;
+  }
+  .modal-btn-primary:hover { background: var(--primary-dark); }
+  .modal-btn-secondary {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px 20px; border-radius: 12px;
+    background: var(--surface2); color: var(--text2);
+    font-family: var(--sans); font-size: 15px; font-weight: 500;
+    border: 1px solid var(--border); cursor: pointer; transition: all 0.2s;
+    text-decoration: none;
+  }
+  .modal-btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 300;
+    background: var(--surface2); border: 1px solid var(--green);
+    border-radius: 12px; padding: 14px 20px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; color: var(--text);
+    transform: translateY(100px); opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast-icon { font-size: 18px; }
+
+  /* ─── INSTALL HOW-TO BANNER ─── */
+  .how-it-works {
+    position: relative; z-index: 1;
+    max-width: 1200px; margin: 0 auto 64px;
+    padding: 0 40px;
+  }
+  .how-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px;
+  }
+  .how-step { text-align: center; padding: 8px; }
+  .how-num {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: var(--primary-glow); border: 1px solid rgba(91,127,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--display); font-size: 20px; font-weight: 800; color: var(--primary);
+    margin: 0 auto 16px;
+  }
+  .how-title { font-family: var(--display); font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .how-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+  .section-label {
+    position: relative; z-index: 1;
+    text-align: center; margin-bottom: 40px;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--primary); letter-spacing: 2px; text-transform: uppercase;
+  }
+
+  /* ─── EMPTY STATE ─── */
+  .empty {
+    text-align: center; padding: 80px 20px;
+    grid-column: 1 / -1;
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-title { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .empty-desc { color: var(--text2); font-size: 14px; }
+
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr; }
+    .sidebar { position: static; }
+    nav { padding: 0 20px; }
+    .hero { padding: 60px 20px 50px; }
+    .how-grid { grid-template-columns: 1fr; }
+    .how-it-works, .main { padding: 0 20px; }
+    .stats-bar { flex-direction: column; }
+    .stat { border-right: none; border-bottom: 1px solid var(--border); }
+    .stat:last-child { border-bottom: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">
+    <div class="logo-icon">⚡</div>
+    <span class="logo-text">Skill<span>Vault</span></span>
+  </a>
+  <div class="nav-links">
+    <button class="nav-link" onclick="scrollTo({top:document.querySelector('.main').offsetTop,behavior:'smooth'})">Browse</button>
+    <button class="nav-link" onclick="showSubmitInfo()">Submit Skill</button>
+    <a class="nav-cta" href="https://claude.ai" target="_blank">
+      Open Claude ↗
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <div class="badge-dot"></div>
+    Community Skills Registry
+  </div>
+  <h1>
+    Supercharge Claude<br>
+    <span class="line2">with Custom Skills</span>
+  </h1>
+  <p>
+    Browse, download, and install community-built Claude skills in one click.
+    Extend Claude's capabilities for mobile dev, backend, design, and more.
+  </p>
+  <div class="hero-actions">
+    <button class="btn-primary" onclick="scrollTo({top:document.querySelector('.main').offsetTop,behavior:'smooth'})">
+      Browse Skills →
+    </button>
+    <button class="btn-ghost" onclick="showSubmitInfo()">
+      📦 Submit Your Skill
+    </button>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar" style="position:relative;z-index:1;max-width:600px;margin:0 auto 80px;">
+  <div class="stat">
+    <div class="stat-value"><span id="total-skills">2</span></div>
+    <div class="stat-label">Skills Available</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value"><span>3</span></div>
+    <div class="stat-label">Categories</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value"><span>Free</span></div>
+    <div class="stat-label">Always & Forever</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="how-it-works">
+  <div class="section-label">How to Install</div>
+  <div class="how-grid">
+    <div class="how-step">
+      <div class="how-num">1</div>
+      <div class="how-title">Find Your Skill</div>
+      <div class="how-desc">Browse or search skills by category. Click any skill to see what it does and what it improves.</div>
+    </div>
+    <div class="how-step">
+      <div class="how-num">2</div>
+      <div class="how-title">Download the .skill File</div>
+      <div class="how-desc">Click Download to get the <code style="color:var(--primary);background:var(--surface2);padding:1px 6px;border-radius:4px;">.skill</code> file. It's a zip with instructions Claude reads.</div>
+    </div>
+    <div class="how-step">
+      <div class="how-num">3</div>
+      <div class="how-title">Install in Claude</div>
+      <div class="how-desc">Open Claude → Settings → Skills → Install from file. Select your downloaded file. Done.</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN: SIDEBAR + GRID -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Search</div>
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search skills..." oninput="filterSkills()">
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Category</div>
+      <button class="filter-btn active" data-cat="all" onclick="setCat('all',this)">
+        <span class="filter-icon">🌐</span> All Skills
+        <span class="filter-count" id="count-all">2</span>
+      </button>
+      <button class="filter-btn" data-cat="mobile" onclick="setCat('mobile',this)">
+        <span class="filter-icon">📱</span> Mobile Dev
+        <span class="filter-count" id="count-mobile">1</span>
+      </button>
+      <button class="filter-btn" data-cat="backend" onclick="setCat('backend',this)">
+        <span class="filter-icon">⚙️</span> Backend
+        <span class="filter-count" id="count-backend">1</span>
+      </button>
+      <button class="filter-btn" data-cat="frontend" onclick="setCat('frontend',this)">
+        <span class="filter-icon">🎨</span> Frontend
+        <span class="filter-count" id="count-frontend">0</span>
+      </button>
+      <button class="filter-btn" data-cat="devops" onclick="setCat('devops',this)">
+        <span class="filter-icon">🚀</span> DevOps
+        <span class="filter-count" id="count-devops">0</span>
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Author</div>
+      <button class="filter-btn active-subtle">
+        <span class="filter-icon">👤</span> All Authors
+      </button>
+    </div>
+  </aside>
+
+  <!-- SKILLS GRID -->
+  <div class="skills-area">
+    <div class="skills-header">
+      <h2 class="skills-heading" id="section-heading">All Skills</h2>
+      <select class="sort-select" onchange="sortSkills(this.value)">
+        <option value="newest">Newest First</option>
+        <option value="popular">Most Popular</option>
+        <option value="name">A–Z</option>
+      </select>
+    </div>
+    <div class="skills-grid" id="skills-grid"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="toast-icon">✅</span>
+  <span id="toast-msg">Copied to clipboard!</span>
+</div>
+
+<script>
+const SKILLS = [
+  {
+    id: 'react-native-app-design',
+    name: 'React Native App Design',
+    icon: '📱',
+    iconBg: 'linear-gradient(135deg,#6366F1,#EC4899)',
+    category: 'mobile',
+    badges: ['popular'],
+    tags: ['expo', 'react-native', 'mobile', 'graphql', 'security', 'eas'],
+    desc: 'Master skill for building production-grade React Native / Expo apps. Covers navigation (drawer, tabs, top bar), ecommerce like Amazon, delivery maps like Swiggy/Zomato, GraphQL/Apollo, Sentry observability, EAS Build & OTA, security hardening with biometrics and HMAC, and all standard app screens.',
+    version: '2.0.0',
+    size: '29 KB',
+    downloads: 14,
+    stars: 5,
+    author: 'you',
+    updated: '2025-03-02',
+    file: 'react-native-app-design.skill',
+    refs: ['setup-and-config', 'design-system', 'navigation', 'api-graphql', 'api-rest', 'screens-auth', 'screens-ecommerce', 'screens-maps', 'screens-legal', 'security', 'observability', 'deployment'],
+  },
+  {
+    id: 'go-development',
+    name: 'Go Development',
+    icon: '🐹',
+    iconBg: 'linear-gradient(135deg,#00ADD8,#3ECFAC)',
+    category: 'backend',
+    badges: ['new'],
+    tags: ['golang', 'rest-api', 'grpc', 'sqlc', 'postgres', 'opentelemetry'],
+    desc: 'Expert skill for writing idiomatic, production-ready Go code. Covers project layout, REST APIs (Gin/Chi/Echo), gRPC, error handling patterns, goroutine safety, database access (sqlc/pgx/GORM), table-driven testing, structured logging with slog, OpenTelemetry tracing, Prometheus metrics, and Docker deployment.',
+    version: '1.0.0',
+    size: '30.7 KB',
+    downloads: 3,
+    stars: 5,
+    author: 'you',
+    updated: '2025-03-02',
+    file: 'go-development.skill',
+    refs: ['idioms', 'errors', 'concurrency', 'api-rest', 'api-grpc', 'database', 'testing', 'observability', 'deployment', 'cli'],
+  },
+];
+
+let currentCat = 'all';
+let currentSearch = '';
+let currentSort = 'newest';
+
+function getFiltered() {
+  return SKILLS
+    .filter(s => currentCat === 'all' || s.category === currentCat)
+    .filter(s => {
+      const q = currentSearch.toLowerCase();
+      return !q || s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q) || s.tags.some(t => t.includes(q));
+    })
+    .sort((a, b) => {
+      if (currentSort === 'name') return a.name.localeCompare(b.name);
+      if (currentSort === 'popular') return b.downloads - a.downloads;
+      return new Date(b.updated) - new Date(a.updated);
+    });
+}
+
+function renderGrid() {
+  const grid = document.getElementById('skills-grid');
+  const filtered = getFiltered();
+  document.getElementById('section-heading').textContent =
+    currentCat === 'all' ? 'All Skills' :
+    currentCat === 'mobile' ? 'Mobile Dev' :
+    currentCat === 'backend' ? 'Backend' : currentCat;
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">No skills found</div>
+      <div class="empty-desc">Try a different search or category</div>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(s => `
+    <div class="skill-card" onclick="openModal('${s.id}')">
+      <div class="card-header">
+        <div class="card-icon" style="background:${s.iconBg}">${s.icon}</div>
+        <div class="card-badges">
+          ${s.badges.map(b => `<span class="badge badge-${b}">${b === 'new' ? '✦ New' : b === 'popular' ? '🔥 Popular' : '↑ Updated'}</span>`).join('')}
+        </div>
+      </div>
+      <div class="card-name">${s.name}</div>
+      <div class="card-desc">${s.desc}</div>
+      <div class="card-tags">
+        ${s.tags.slice(0,4).map(t => `<span class="tag">${t}</span>`).join('')}
+        ${s.tags.length > 4 ? `<span class="tag">+${s.tags.length-4}</span>` : ''}
+      </div>
+      <div class="card-meta">
+        <div class="card-stats">
+          <span class="card-stat">⬇ ${s.downloads}</span>
+          <span class="card-stat">★ ${s.stars}</span>
+          <span class="card-stat">v${s.version}</span>
+        </div>
+        <div class="card-actions" onclick="event.stopPropagation()">
+          <a class="btn-download" href="${s.file}" download title="Download .skill file">
+            ⬇ ${s.size}
+          </a>
+          <button class="btn-install" onclick="openModal('${s.id}')">
+            Install
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function setCat(cat, btn) {
+  currentCat = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
+}
+
+function filterSkills() {
+  currentSearch = document.getElementById('search-input').value;
+  renderGrid();
+}
+
+function sortSkills(val) {
+  currentSort = val;
+  renderGrid();
+}
+
+function openModal(id) {
+  const s = SKILLS.find(x => x.id === id);
+  if (!s) return;
+  const deepLink = `claude://install-skill?url=${encodeURIComponent(window.location.origin + '/' + s.file)}&name=${encodeURIComponent(s.name)}`;
+  document.getElementById('modal-content').innerHTML = `
+    <div class="modal-header">
+      <div>
+        <div class="modal-icon" style="background:${s.iconBg}">${s.icon}</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        ${s.badges.map(b => `<span class="badge badge-${b}">${b === 'new' ? '✦ New' : b === 'popular' ? '🔥 Popular' : '↑ Updated'}</span>`).join('')}
+      </div>
+      <div class="modal-name">${s.name}</div>
+      <div style="display:flex;gap:16px;margin-bottom:16px;font-size:13px;color:var(--text3);font-family:var(--mono)">
+        <span>v${s.version}</span>
+        <span>${s.size}</span>
+        <span>⬇ ${s.downloads} downloads</span>
+        <span>Updated ${s.updated}</span>
+      </div>
+      <div class="modal-desc">${s.desc}</div>
+
+      <div class="modal-section-title">Reference Modules</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px">
+        ${s.refs.map(r => `<span class="tag">${r}</span>`).join('')}
+      </div>
+
+      <div class="modal-section-title">How to Install</div>
+      <div class="install-steps">
+        <div class="install-step">
+          <div class="step-num">1</div>
+          <div class="step-text"><strong>Download</strong> the .skill file using the button below</div>
+        </div>
+        <div class="install-step">
+          <div class="step-num">2</div>
+          <div class="step-text">Open <strong>Claude → Settings → Skills → Install from file</strong></div>
+        </div>
+        <div class="install-step">
+          <div class="step-num">3</div>
+          <div class="step-text">Select the downloaded <strong>${s.file}</strong> file</div>
+        </div>
+        <div class="install-step">
+          <div class="step-num">4</div>
+          <div class="step-text">Claude will automatically use this skill whenever relevant!</div>
+        </div>
+      </div>
+
+      <div class="modal-section-title" style="margin-bottom:8px">Deep Link (experimental)</div>
+      <div class="deep-link-box" id="deep-link-${id}">${deepLink}</div>
+      <button onclick="copyDeepLink('${id}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text2);font-family:var(--sans);font-size:13px;cursor:pointer;margin-bottom:24px;transition:all 0.2s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        📋 Copy deep link
+      </button>
+
+      <div class="modal-actions">
+        <a class="modal-btn-primary" href="${s.file}" download>
+          ⬇ Download ${s.file}
+        </a>
+        <button class="modal-btn-secondary" onclick="tryDeepLink('${deepLink}')">
+          ⚡ Try Auto-Install
+        </button>
+      </div>
+      <p style="font-size:12px;color:var(--text3);text-align:center;margin-top:12px">
+        Auto-install via deep link is experimental — use Download if it doesn't work.
+      </p>
+    </div>
+  `;
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function tryDeepLink(link) {
+  window.location.href = link;
+  setTimeout(() => showToast('If nothing opened, use the Download button instead.', '⚠️'), 1500);
+}
+
+function copyDeepLink(id) {
+  const text = document.getElementById('deep-link-' + id).textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('Deep link copied!'));
+}
+
+function showToast(msg, icon = '✅') {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.querySelector('.toast-icon').textContent = icon;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function showSubmitInfo() {
+  alert('To submit a skill:\n\n1. Create your .skill file following Claude\'s skill format\n2. Share it on GitHub\n3. Open an issue or pull request on this registry\n\nComing soon: Direct upload form!');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// Init
+renderGrid();
+document.getElementById('total-skills').textContent = SKILLS.length;
+</script>
+</body>
+</html>
